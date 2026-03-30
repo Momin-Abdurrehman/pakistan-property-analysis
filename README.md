@@ -103,13 +103,33 @@ cd .. && streamlit run app.py                  # Launch dashboard
 
 ---
 
+## What We Tried & Why
+
+We didn't land on the final model on the first attempt. We tested multiple approaches across separate branches and picked the best:
+
+| What we tried | What happened | Decision |
+|--------------|---------------|----------|
+| **All property types together** (Houses + Flats + Plots) | Bathrooms became a proxy for "is this built or empty land" — 46% feature importance on a meaningless signal | Filtered to **houses only** |
+| **Label encoding** for city and property type | Model barely used property type (1.5% importance). A house and plot predicted at nearly the same price | Switched to **one-hot encoding** |
+| **Shared location one-hot** (50 top locations) | "DHA Phase 6" in Lahore and Karachi shared one feature, blending different price levels | Switched to **target encoding** — each (city, location) pair gets its own signal |
+| **City-prefixed one-hot** (city × location) | Fixed the bleed but 50 sparse features with limited signal | Target encoding won — 1 feature, every location gets a signal, smoothed for small samples |
+| **Default hyperparameters** | RF and GB left performance on the table | **Optuna Bayesian tuning** (200 trials) found optimal XGBoost params |
+| **Single best model** | Each model (RF, GB, XGBoost) captured different patterns | **Stacked ensemble** — combine all three via Ridge meta-learner |
+| **10K listings** | Premium areas (F-8, Clifton, DHA Phase 5) had 0-6 listings — worst predictions | **Targeted scraping** of 17 areas + deeper pages → 14K listings. F-8 error: 64% → 9.4% |
+
+Full experiment details: **[MODEL_EXPERIMENTS.md](MODEL_EXPERIMENTS.md)**
+
+---
+
 ## Limitations
 
-- **Listing prices, not sale prices** — asking prices may be inflated
-- **No construction quality data** — new vs old house = 2-3x gap, not captured
-- **Cross-city location bleed** — "DHA Phase 6" in Lahore and Karachi share one encoding
-- **Premium outliers** — F-6/F-7 Islamabad (20-55 Cr) hard to predict with few examples
-- **Marla = 225 sqft universally** — varies by city in government records
+- **Listing prices, not sale prices** — Zameen shows asking prices, which may be inflated above actual transaction values
+- **No construction quality data** — a new house vs a 20-year-old house at the same address can differ 2-3x in price. Our data doesn't capture age, condition, or finish quality
+- **Ultra-premium properties (50+ Crore)** — very few training examples at this price tier. Model predictions are less reliable for luxury properties
+- **Single point in time** — scraped on one date, no temporal trends or seasonality captured
+- **6 cities only** — smaller cities, towns, and rural areas are not represented
+- **Online listings bias** — properties sold through traditional off-market channels are excluded
+- **Marla = 225 sqft universally** — actual Marla varies by city in government records (225-272 sqft). We follow Zameen.com's standardized convention
 
 ---
 
