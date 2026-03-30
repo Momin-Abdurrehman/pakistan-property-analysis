@@ -8,7 +8,7 @@ Usage:
     python scripts/scraper.py
 
 Output:
-    data/raw/zameen_raw.csv
+    data/raw/zameen_raw_complete.csv
 
 Note: For academic use only. Rate-limited to be respectful to the server.
 """
@@ -40,7 +40,7 @@ PROPERTY_TYPES = [
 ]
 
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "raw")
-OUTPUT_FILE = os.path.join(OUTPUT_DIR, "zameen_raw.csv")
+OUTPUT_FILE = os.path.join(OUTPUT_DIR, "zameen_raw_complete.csv")
 
 # Delay between page loads (seconds) — respectful rate limiting
 MIN_DELAY = 2.0

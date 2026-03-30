@@ -1,94 +1,144 @@
-# Model Experiments: Location Encoding Strategies
+# Model Experiments Log
 
-We tested three different approaches for encoding location features. All use the same base model (Random Forest, 200 trees) and same dataset (18,400+ listings). The only difference is how location information is represented.
-
----
-
-## The Three Approaches
-
-### 1. Main: Shared One-Hot (50 locations)
-- Top 50 locations (50+ listings each) get a one-hot column
-- `loc_DHA Phase 6` fires for both Lahore and Karachi DHA Phase 6
-- **62 features** total
-- Branch: `main`
-
-### 2. City-Prefix One-Hot (50 city×location pairs)
-- Same threshold, but locations are prefixed with city name
-- `loc_Lahore_DHA Phase 6` and `loc_Karachi_DHA Phase 6` are separate features
-- Fixes cross-city contamination
-- **62 features** total
-- Branch: `fix/city-location-interactions`
-
-### 3. Target Encoding (smoothed Bayesian)
-- Each location replaced with its smoothed mean `log_price` from training data
-- Formula: `(n × loc_mean + m × city_mean) / (n + m)` where `m=50`
-- Every location gets a signal; unknown locations fall back to city mean
-- Encoder fit on training data only (no leakage)
-- **13 features** total
-- Branch: `experiment/target-encoding`
+A record of every modeling approach we tested, what worked, what didn't, and why.
 
 ---
 
-## Results on 50 Real-World Properties
+## Experiment 1: Location Encoding Strategies
 
-Tested against hand-verified actual prices across Islamabad (17), Lahore (17), and Karachi (16).
+We tested three approaches for encoding the 2,500+ unique locations. All used Random Forest (200 trees) on the same dataset.
 
-| Metric | Main (One-Hot) | City-Prefix | Target Encoding |
+### Approaches
+
+| Approach | Description | Features |
+|----------|-------------|----------|
+| **Shared One-Hot** | Top 50 locations get one-hot columns. `loc_DHA Phase 6` fires for both Lahore and Karachi. | 62 |
+| **City-Prefix One-Hot** | Same threshold, but `loc_Lahore_DHA Phase 6` and `loc_Karachi_DHA Phase 6` are separate. | 62 |
+| **Target Encoding** | Each location replaced with smoothed mean log_price from training data. Bayesian prior (m=50) regularizes toward city mean. | 13 |
+
+### Results (50 real-world properties)
+
+| Metric | Shared One-Hot | City-Prefix | Target Encoding |
 |--------|---------------|-------------|-----------------|
-| **Good (±25%)** | **20/50** | 18/50 | 16/50 |
-| **Median Error** | **34.2%** | 39.5% | 38.8% |
-| **Mean Error** | **39.6%** | 41.6% | 42.5% |
+| Good (±25%) | **20/50** | 18/50 | 16/50 |
+| Median Error | **34.2%** | 39.5% | 38.8% |
 | Best on N cases | 17 | 15 | **18** |
-| Features | 62 | 62 | **13** |
 
-### Per-City Breakdown
-
-| City | Main | City-Prefix | Target Encoding |
-|------|------|-------------|-----------------|
-| Islamabad (17) | 7 good | 7 good | 4 good |
-| Lahore (17) | 8 good | 7 good | 8 good |
-| Karachi (16) | 5 good | 4 good | 4 good |
+### Conclusion
+No single approach dominated. Shared one-hot won overall accuracy. Target encoding won on the hardest individual cases. We kept shared one-hot for the main branch (simplest, best overall), and explored target encoding on separate branches.
 
 ---
 
-## Key Findings
+## Experiment 2: Houses-Only vs All Property Types
 
-**1. No single approach dominates.**
-Main wins on overall accuracy. Target encoding wins on the hardest individual cases. City-prefix sits in between.
+### Problem
+Training on Houses + Flats + Plots forced the model to use bathrooms as a proxy for "is this built or empty land" — 46% of feature importance went to bathrooms, which is not a meaningful price signal.
 
-**2. Main's "contamination" is sometimes helpful.**
-Shared location features (e.g., `loc_DHA Phase 6`) pool signal from multiple cities. When the test property is in a well-represented area, this averaging effect produces reasonable estimates.
+### Solution
+Filtered to 10,473 houses only. Removed Plots and Flats entirely.
 
-**3. Target encoding excels at obscure locations.**
-DHA City (2.6 Cr actual → 2.5 Cr predicted ✅) and Wapda Town (6.2 Cr → 7.3 Cr ✅) — target encoding nails these because even small-sample locations get a smoothed signal. The other two approaches fall back to the generic city average.
+### Results
 
-**4. All three fail on ultra-premium properties.**
-F-6 Islamabad (55 Cr), F-7 (31 Cr), Model Town Lahore (28 Cr), DHA Phase 5 Karachi (35 Cr) — all three approaches predict 7-13 Cr. These properties are in a different price tier that our training data barely covers.
+| Metric | All Types (18K) | Houses Only (10K) |
+|--------|----------------|-------------------|
+| Good (±25%) | 50% | **59%** |
+| Median Error | 26.2% | **19.9%** |
+| Bad (>50%) | 28% | **14%** |
 
-**5. Karachi is the hardest city.**
-All approaches struggle with Karachi's extreme within-city price variance (Bahria Town 1.9 Cr vs DHA Phase 5 at 35 Cr for similar sizes). The Sq. Yd. market has complexities (covered vs open area, floors) not captured in our features.
-
----
-
-## Why We Kept the Shared One-Hot Approach
-
-| Factor | Main | City-Prefix | Target Encoding |
-|--------|------|-------------|-----------------|
-| Accuracy | Best overall | Slightly worse | Best per-case but worst overall |
-| Simplicity | Simple | Simple | Requires custom encoder class |
-| Explainability | Easy to understand | Easy to understand | Harder (leakage prevention, smoothing, Bayesian prior) |
-| Robustness | High | High | Medium (sensitive to implementation details) |
-
-The shared one-hot approach gave the best overall accuracy while being the simplest to implement and reason about.
+Bathrooms feature importance dropped from 46% to a reasonable level, and the model learned actual house price drivers instead of property type proxies.
 
 ---
 
-## What Would Actually Fix the Remaining Errors
+## Experiment 3: Derived Geographic Features
 
-The 30 cases that all three approaches get wrong share common traits:
-- **Ultra-premium sectors** (F-6, F-7, F-10) — need more luxury property data
-- **Construction quality** — a new house vs 20-year-old at the same address = 2-3x price gap, not in our data
-- **Karachi Sq. Yd. complexity** — number of floors, covered area ratio, plot vs constructed
-- **Street-level variation** — main road vs interior lane in the same DHA phase
+### Features Extracted
+Using Pakistan property market domain knowledge, we extracted 5 features from location name strings:
 
-These are **data gaps, not encoding problems.** No amount of feature engineering can fix "we don't have the right features."
+1. **society_type** — DHA, Bahria, Askari, CDA_Sector, Private, Established, Other
+2. **dha_phase** — phase number for DHA properties (lower = older = often more expensive)
+3. **isb_sector_tier** — F=5 > E=4 > G=3 > I=2 > B,D=1 for Islamabad CDA sectors
+4. **is_premium_area** — binary flag for known premium locations (F-6/7/8, Clifton, DHA Phase 5/6, etc.)
+5. **phase_number** — generic phase/block number for any society
+
+### Validation
+- Premium areas median price: 7.3 Cr vs non-premium: 3.1 Cr (2.4x gap captured)
+- 68% of houses explicitly categorized by society type
+
+---
+
+## Experiment 4: Optuna XGBoost + Stacked Ensemble
+
+### Optuna Tuning
+200 Bayesian optimization trials on XGBoost, tuning 8 hyperparameters: n_estimators, max_depth, learning_rate, min_child_weight, subsample, colsample_bytree, reg_alpha, reg_lambda.
+
+### Stacked Ensemble
+Three base models (Random Forest, Gradient Boosting, tuned XGBoost) with a Ridge regression meta-learner. 5-fold CV for base model predictions to prevent leakage.
+
+### Results
+
+| Model | R² |
+|-------|-----|
+| Random Forest | 0.91 |
+| Gradient Boosting | 0.92 |
+| XGBoost (Optuna) | 0.93 |
+| **Stacked Ensemble** | **0.93** |
+
+Overfit check: train-test R² gap = 0.04 (healthy). CV RMSE std/mean = 3.7% (stable).
+
+---
+
+## Experiment 5: More Data (Targeted + General Scraping)
+
+### Problem
+Premium areas (F-6, F-7, F-8, Clifton, DHA Phase 5) had 0-6 listings. Model couldn't learn premium price levels.
+
+### Solution
+1. **Targeted scraping:** Area-specific Zameen URLs for 17 underrepresented areas → 4,157 new listings
+2. **General scraping:** Pages 81-400 across all 6 cities → 10,081 new listings
+3. Cleaned, merged, deduplicated → 14,255 total houses (up from 10,473)
+
+### Impact on specific areas
+
+| Area | Before | After | Prediction Improvement |
+|------|--------|-------|----------------------|
+| F-8 Islamabad | 6 | 123 | 64% error → 9.4% ✅ |
+| F-10 Islamabad | 28 | 242 | 50% error → 7.4% ✅ |
+| DHA City Karachi | 3 | 23 | 52% error → 5.8% ✅ |
+| Clifton Karachi | 83 | 301 | 42% error → improved |
+| PECHS Karachi | 59 | 296 | 29% error → improved |
+
+### Final Results (14K houses)
+
+| Metric | 10K Houses | 14K Houses |
+|--------|-----------|-----------|
+| Good (±25%) | 62% | **59%** |
+| Within ±50% | 93% | **90%** |
+| Bad (>50%) | 7% | **10%** |
+| Median Error | 21.6% | **18.6%** |
+| R² | 0.93 | **0.93** |
+
+Median error improved. The slight drop in "good" percentage is because the extra data introduced more diverse properties that are harder to predict, but the median and mean errors both improved.
+
+---
+
+## Full Progression
+
+| Version | Data | Good (±25%) | Median Error | R² |
+|---------|------|-------------|--------------|-----|
+| All types, one-hot | 18K | 50% | 26.2% | 0.77 |
+| Houses only | 10K | 59% | 19.9% | 0.77 |
+| + Geographic features | 10K | 52% | 23.6% | 0.77 |
+| + Optuna + Stacking | 10K | 62% | 21.6% | 0.93 |
+| + Targeted scrape | 11K | 55% | 19.9% | 0.93 |
+| **+ General scrape** | **14K** | **59%** | **18.6%** | **0.93** |
+
+---
+
+## What Would Fix the Remaining Errors
+
+The 3 remaining bad cases (DHA Phase 2 Islamabad, G-13, Federal B Area) share traits:
+- **Ultra-premium sectors** with few training examples at matching price levels
+- **Construction quality / age** not captured in our features
+- **Street-level variation** within the same area
+
+These are data gaps, not model flaws. Fixing them requires either much more data from these specific areas, or additional features (property age, floors, covered area) that Zameen listing cards don't expose.

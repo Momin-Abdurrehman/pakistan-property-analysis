@@ -1,185 +1,170 @@
 <p align="center">
-  <h1 align="center">🏠 Pakistan Property Market Analysis & Price Prediction</h1>
+  <h1 align="center">🏠 Pakistan House Price Analysis & Prediction</h1>
   <p align="center">
-    <em>End-to-end data science pipeline analyzing 24,000+ property listings across 6 Pakistani cities</em>
+    <em>End-to-end data science pipeline predicting house prices across 6 Pakistani cities using 29,000+ scraped listings</em>
   </p>
   <p align="center">
     <img src="https://img.shields.io/badge/Python-3.12-blue?logo=python&logoColor=white" alt="Python">
     <img src="https://img.shields.io/badge/Scikit--Learn-1.6-orange?logo=scikit-learn&logoColor=white" alt="Scikit-learn">
+    <img src="https://img.shields.io/badge/XGBoost-Optuna-green" alt="XGBoost">
     <img src="https://img.shields.io/badge/Streamlit-Dashboard-red?logo=streamlit&logoColor=white" alt="Streamlit">
-    <img src="https://img.shields.io/badge/Data-Zameen.com-green" alt="Data Source">
+    <img src="https://img.shields.io/badge/R²-0.93-brightgreen" alt="R²">
   </p>
 </p>
 
 ---
 
-## 📋 Overview
+## Overview
 
-This project develops a complete data science pipeline to analyze and predict property prices in Pakistan using real-world data scraped from **Zameen.com**, Pakistan's largest property portal. It covers data collection, cleaning, exploratory analysis, machine learning modeling, and interactive visualization.
+This project develops a complete data science pipeline to predict house prices in Pakistan using real-world data scraped from **Zameen.com**. It covers data collection, cleaning, exploratory analysis, feature engineering with domain knowledge, advanced ML modeling, and interactive visualization.
 
 **Key highlights:**
-- **24,373 listings** scraped across **6 cities** and **3 property types** (Houses, Flats, Plots)
-- Handles Pakistan-specific challenges: mixed units (Marla, Kanal, Sq. Yd., sqft), regional price variations, and inconsistent listing data
-- **Random Forest model** achieves **R² = 0.77** for price prediction
-- **Overpriced/undervalued detection** flags listings that deviate >20% from fair market value
+- **29,220 listings** scraped across **6 cities**, filtered to **14,255 houses**
+- **Derived geographic features** using Pakistan property market domain knowledge (DHA phases, CDA sector tiers, premium area flags)
+- **Smoothed Bayesian target encoding** for 2,500+ locations — every neighborhood gets a price signal
+- **Stacked ensemble** (RF + GB + Optuna-tuned XGBoost → Ridge) achieves **R² = 0.93**
+- **Overpriced/undervalued detection** flags listings deviating >20% from fair market value
 - **Interactive Streamlit dashboard** with area-wise analysis and AI-powered price predictor
 
 > **Course:** DS 401 – Introduction to Data Science | NUST SEECS | Spring 2026
 
 ---
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 pakistan-property-analysis/
 ├── notebooks/
-│   └── main.ipynb              # Complete analysis notebook (Sections 1-5)
+│   └── main.ipynb                  # Complete analysis notebook
 ├── scripts/
-│   └── scraper.py              # Playwright scraper for Zameen.com
+│   └── scraper.py                  # Playwright scraper for Zameen.com
 ├── data/
 │   ├── raw/
-│   │   └── zameen_raw.csv      # Raw scraped data (24,373 listings)
+│   │   └── zameen_raw_complete.csv # All scraped data (29,220 listings)
 │   └── processed/
-│       └── zameen_cleaned.csv  # Cleaned dataset (18,400+ rows)
-├── app.py                      # Streamlit dashboard
-├── DS401 Term Project.pdf      # Project requirements
-├── .gitignore
+│       └── houses_cleaned.csv      # Cleaned houses (14,255 rows)
+├── app.py                          # Streamlit dashboard
+├── ISSUES.md                       # Issues encountered & resolutions
+├── MODEL_EXPERIMENTS.md            # All modeling experiments & comparisons
 └── README.md
 ```
 
 ---
 
-## 📊 Pipeline
+## Pipeline
 
 ### 1. Data Collection
-- **Source:** [Zameen.com](https://www.zameen.com) — scraped using Playwright (headless Chromium)
-- **Coverage:** Lahore, Karachi, Islamabad, Rawalpindi, Faisalabad, Peshawar
-- **Property types:** Houses (12,435), Plots (6,776), Flats (5,162)
-- **Fields:** price, location, city, size (with unit), bedrooms, bathrooms, property type
+- **Source:** Zameen.com — scraped using Playwright (headless Chromium)
+- **29,220 total listings** across Lahore, Karachi, Islamabad, Rawalpindi, Faisalabad, Peshawar
+- **Targeted scraping** of 17 premium/underrepresented areas (F-6, F-7, F-8, Clifton, DHA phases)
+- Fields: price, location, city, size (with unit), bedrooms, bathrooms
 
-### 2. Data Cleaning & Preprocessing
-- **Price parsing:** "4.95 Crore" → `49,500,000 PKR`
-- **Unit standardization:** Marla (×225), Kanal (×4,500), Sq. Yd. (×9) → sqft
-- **Missing values:** Plot beds/baths filled with 0 (semantically correct); House/Flat nulls dropped
-- **Outlier removal:** IQR method per property type + domain sanity filters
-- **Feature engineering:** `price_per_sqft`, `log_price`, `size_category`, one-hot encoded city/type/location
+### 2. Data Cleaning
+- Price parsing: "4.95 Crore" → numeric PKR
+- Unit standardization: Marla×225, Kanal×4,500, Sq.Yd.×9 → sqft
+- Filtered to **Houses only** (removed Plots/Flats — fundamentally different products)
+- IQR outlier removal + domain sanity filters (min 200 sqft, min 5 Lakh)
+- Result: **14,255 clean house listings**
 
-### 3. Exploratory Data Analysis
-- Statistical profiling with skewness/kurtosis
-- Univariate (histograms, KDE, bar charts), bivariate (scatter, box plots), multivariate (pair plots)
-- Correlation heatmap with interpretation
-- All findings explicitly connected to modeling decisions
+### 3. Feature Engineering (22 features)
+- **Numeric:** size_sqft, log_size, bedrooms, bathrooms
+- **Geographic (derived from location names):**
+  - `society_type`: DHA, Bahria, Askari, CDA_Sector, Private, Established, Other
+  - `dha_phase`: phase number for DHA properties
+  - `isb_sector_tier`: F=5 > E=4 > G=3 > I=2 > B,D=1
+  - `is_premium_area`: binary flag for premium locations
+  - `phase_number`: generic phase/block number
+- **City:** one-hot (6 columns)
+- **Location:** smoothed Bayesian target encoding (m=50, fit on training data only)
 
-### 4. Modeling & Predictions
-| Model | RMSE | MAE | R² |
-|-------|------|-----|-----|
-| Baseline (Mean) | ~0.93 | ~0.77 | ~0.00 |
-| Linear Regression (scaled) | ~0.57 | ~0.43 | ~0.63 |
-| Random Forest | ~0.45 | ~0.32 | ~0.77 |
-| Gradient Boosting | ~0.45 | ~0.33 | ~0.77 |
+### 4. Modeling
 
-- **62 features:** 3 numeric + 3 property type + 6 city + 50 top locations (one-hot)
-- **StandardScaler** applied to numeric features for Linear Regression
-- **GridSearchCV** hyperparameter tuning on Random Forest
-- Diagnostics: residual plot, feature importance, actual vs predicted
+| Model | R² |
+|-------|-----|
+| Baseline (Mean) | ~0.00 |
+| Linear Regression (scaled) | ~0.74 |
+| Random Forest (300 trees) | ~0.91 |
+| Gradient Boosting | ~0.92 |
+| XGBoost (Optuna, 200 trials) | ~0.93 |
+| **Stacked Ensemble (RF+GB+XGB → Ridge)** | **~0.93** |
 
-### 5. Insights & Visualization
-- **Overpriced/undervalued detection** using model predictions (±20% threshold)
-- Polished dashboard-style summary visualizations
+- Overfit check: train-test gap = 0.04, CV stable at 3.7% std/mean
+- Tested on 29 real-world properties: **59% within ±25%, 90% within ±50%, median error 18.6%**
+
+### 5. Insights
+- Overpriced/undervalued property detection (±20% threshold)
 - 5 key findings tied to specific figures
-- Limitations, assumptions, and next steps
+- Comprehensive limitations & next steps
 
 ---
 
-## 🖥️ Interactive Dashboard
+## Dashboard
 
-The Streamlit dashboard provides an interactive way to explore the data and predictions.
+Streamlit app with 5 tabs:
 
-**Tabs:**
 | Tab | Description |
 |-----|-------------|
-| 📊 Market Overview | Price distribution, property type breakdown, size vs price scatter |
-| 🗺️ City Comparison | Price/sqft by city, listings by city, city × type grouped bar |
-| 🏘️ Area Analysis | Area-wise price breakdown within each city (top areas vs "Other") |
-| 🔍 Overpriced vs Undervalued | AI-powered pricing status, best deals table |
-| 🤖 Price Predictor | Enter property details → instant price estimate with market context |
+| Market Overview | Price distribution, size vs price scatter |
+| City Comparison | Price/sqft by city, listings by city |
+| Area Analysis | Neighborhood-level price breakdown per city |
+| Overpriced vs Undervalued | AI-powered pricing status, best deals table |
+| Price Predictor | Enter property details → instant price estimate |
 
-### Run the dashboard:
 ```bash
-cd pakistan-property-analysis
 streamlit run app.py
 ```
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
-### Prerequisites
 ```bash
-pip install pandas numpy scikit-learn matplotlib seaborn streamlit plotly playwright
+pip install pandas numpy scikit-learn matplotlib seaborn streamlit plotly playwright xgboost optuna
 playwright install chromium
-```
 
-### Run the notebook
-```bash
-cd notebooks
-jupyter notebook main.ipynb
-# Run all cells top-to-bottom
-```
+# Run notebook
+cd notebooks && jupyter notebook main.ipynb
 
-### Re-scrape data (optional)
-```bash
-python scripts/scraper.py
-# OR set RUN_SCRAPER=True in the first code cell of main.ipynb
+# Run dashboard (requires model_artifacts.pkl — generated by notebook Section 4)
+streamlit run app.py
 ```
-
-### Regenerate model artifacts
-The model pickle (`data/processed/model_artifacts.pkl`) is not included in the repo due to size (80MB). It is automatically generated when you run Section 4 of the notebook. The dashboard requires this file — run the notebook first.
 
 ---
 
-## ⚠️ Known Limitations
+## Known Limitations
 
-### Data
-- **Listing prices, not sale prices** — Zameen.com shows asking prices which may be inflated
-- **Single snapshot** — scraped at one point in time, no temporal trends
-- **6 cities only** — smaller cities and rural areas not represented
-- **Online bias** — traditional off-market properties are excluded
-
-### Model
-- **Cross-city location bleed** — shared location features (e.g., "DHA Phase 6") blend prices across cities. DHA Phase 6 in Lahore and Karachi are treated identically despite being different markets. Interaction features (`city × location`) would fix this at the cost of feature space explosion.
-- **Bathrooms as proxy** — bathrooms has ~46% feature importance because it proxies property development level (0 = empty plot, 6+ = large house), not because bathrooms independently drive price.
-- **Marla = 225 sqft universally** — actual Marla varies by city (225-272 sqft) in government records, but Zameen.com uses a standardized 225.
-
-### Production
-- Model needs regular retraining as market conditions change
-- No external factors (interest rates, infrastructure, economic indicators)
-- Micro-neighborhood effects not captured
+- **Listing prices, not sale prices** — Zameen shows asking prices which may be inflated
+- **Cross-city location bleed** — shared location names (DHA Phase 6) blend signals from different cities
+- **Marla = 225 sqft universally** — actual varies by city (225-272)
+- **No construction quality data** — new vs 20-year-old house = 2-3x price gap, not captured
+- **Premium outliers** — F-6/F-7 Islamabad (20-55 Cr) and Model Town Lahore (28 Cr) remain hard to predict with <100 listings each
 
 ---
 
-## 🔮 Future Work
+## Experiment Branches
 
-1. **More data sources** — Graana.com, OLX for broader coverage
-2. **Geospatial features** — distances to schools, hospitals, highways
-3. **Temporal analysis** — monthly scraping for trend detection
-4. **Interaction features** — `city × location` to fix cross-city bleed
-5. **XGBoost + Optuna** — advanced hyperparameter tuning
-6. **Deployed web app** — production Streamlit/Flask app for real-time predictions
+| Branch | Approach | Median Error |
+|--------|----------|-------------|
+| `main` | All types, shared one-hot | 26.2% |
+| `fix/city-location-interactions` | City-prefix one-hot | 30.0% |
+| `experiment/target-encoding` | Target encoding | 31.5% |
+| `houses-only` | Houses, target enc + XGBoost | 19.9% |
+| `houses-improved` | **Houses, geo features + Optuna + stacking + more data** | **18.6%** |
+
+See [MODEL_EXPERIMENTS.md](MODEL_EXPERIMENTS.md) for detailed comparison.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Category | Tools |
 |----------|-------|
-| **Language** | Python 3.12 |
-| **Data** | Pandas, NumPy |
-| **ML** | Scikit-learn (RandomForest, GradientBoosting, LinearRegression, GridSearchCV) |
-| **Visualization** | Matplotlib, Seaborn, Plotly |
-| **Dashboard** | Streamlit |
-| **Scraping** | Playwright |
-| **Data Source** | Zameen.com |
+| Language | Python 3.12 |
+| Data | Pandas, NumPy |
+| ML | Scikit-learn, XGBoost, Optuna |
+| Visualization | Matplotlib, Seaborn, Plotly |
+| Dashboard | Streamlit |
+| Scraping | Playwright |
 
 ---
 
