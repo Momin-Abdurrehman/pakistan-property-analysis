@@ -105,17 +105,16 @@ cd .. && streamlit run app.py                  # Launch dashboard
 
 ## What We Tried & Why
 
-We didn't land on the final model on the first attempt. We tested multiple approaches across separate branches and picked the best:
+We iterated through multiple approaches. Each change was validated on real-world test data:
 
-| What we tried | What happened | Decision |
-|--------------|---------------|----------|
-| **All property types together** (Houses + Flats + Plots) | Bathrooms became a proxy for "is this built or empty land" — 46% feature importance on a meaningless signal | Filtered to **houses only** |
-| **Label encoding** for city and property type | Model barely used property type (1.5% importance). A house and plot predicted at nearly the same price | Switched to **one-hot encoding** |
-| **Shared location one-hot** (50 top locations) | "DHA Phase 6" in Lahore and Karachi shared one feature, blending different price levels | Switched to **target encoding** — each (city, location) pair gets its own signal |
-| **City-prefixed one-hot** (city × location) | Fixed the bleed but 50 sparse features with limited signal | Target encoding won — 1 feature, every location gets a signal, smoothed for small samples |
-| **Default hyperparameters** | RF and GB left performance on the table | **Optuna Bayesian tuning** (200 trials) found optimal XGBoost params |
-| **Single best model** | Each model (RF, GB, XGBoost) captured different patterns | **Stacked ensemble** — combine all three via Ridge meta-learner |
-| **10K listings** | Premium areas (F-8, Clifton, DHA Phase 5) had 0-6 listings — worst predictions | **Targeted scraping** of 17 areas + deeper pages → 14K listings. F-8 error: 64% → 9.4% |
+| Approach | Holdout Good (±25%) | Median Error | Why we moved on |
+|----------|-------------------|--------------|-----------------|
+| All types + label encoding | 50% | 26.2% | Bathrooms dominated at 46% importance — proxy for "built vs land" |
+| Houses only + one-hot locations | 59% | 19.9% | Premium areas had 0-6 listings, model couldn't learn them |
+| + Geographic features | 52% | 23.6% | Features helped premium areas but added noise elsewhere |
+| + Optuna XGBoost + Stacking | 62% | 21.6% | R² jumped to 0.92 but still limited by data gaps |
+| + Targeted scraping (14K) | 59% | 18.6% | F-8 error: 64% → 9.4%. Karachi still weakest |
+| **+ Target encoding + holdout test** | **71%** | **14.7%** | **Final model — validated on 2,093 unseen listings** |
 
 Full experiment details: **[MODEL_EXPERIMENTS.md](MODEL_EXPERIMENTS.md)**
 
