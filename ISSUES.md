@@ -93,7 +93,7 @@ A detailed record of every significant issue we encountered during development, 
 ### 4.5 Model Tuning with Optuna + Stacking
 **Issue:** Default hyperparameters left performance on the table.
 
-**Resolution:** Used Optuna Bayesian optimization (200 trials) to tune XGBoost. Built a stacked ensemble (RF + GB + XGBoost → Ridge meta-learner) combining three complementary models. R² improved from 0.77 to 0.92. Final dataset: 14,255 houses with 22 features including 5 derived geographic features.
+**Resolution:** Used Optuna Bayesian optimization (200 trials) to tune XGBoost. Built a stacked ensemble (RF + GB + XGBoost → Ridge meta-learner) combining three complementary models. R² improved from 0.77 to 0.92 on the train/test split. Final dataset: 14,255 houses with 22 features including 5 derived geographic features.
 
 ### 4.6 Holdout Validation on Unseen Data
 **Issue:** Testing on the same 29 hand-picked properties every iteration was not statistically robust.

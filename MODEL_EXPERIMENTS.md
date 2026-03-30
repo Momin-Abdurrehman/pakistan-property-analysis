@@ -80,8 +80,8 @@ Three base models (Random Forest, Gradient Boosting, tuned XGBoost) with a Ridge
 |-------|-----|
 | Random Forest | 0.91 |
 | Gradient Boosting | 0.92 |
-| XGBoost (Optuna) | 0.93 |
-| **Stacked Ensemble** | **0.93** |
+| XGBoost (Optuna) | 0.92 |
+| **Stacked Ensemble** | **0.92** |
 
 Overfit check: train-test R² gap = 0.04 (healthy). CV RMSE std/mean = 3.7% (stable).
 
@@ -115,7 +115,7 @@ Premium areas (F-6, F-7, F-8, Clifton, DHA Phase 5) had 0-6 listings. Model coul
 | Within ±50% | 93% | **90%** |
 | Bad (>50%) | 7% | **10%** |
 | Median Error | 21.6% | **18.6%** |
-| R² | 0.93 | **0.93** |
+| R² | 0.92 | **0.92** |
 
 Median error improved. The slight drop in "good" percentage is because the extra data introduced more diverse properties that are harder to predict, but the median and mean errors both improved.
 
@@ -128,9 +128,9 @@ Median error improved. The slight drop in "good" percentage is because the extra
 | All types, one-hot | 18K | 50% | 26.2% | 0.77 |
 | Houses only | 10K | 59% | 19.9% | 0.77 |
 | + Geographic features | 10K | 52% | 23.6% | 0.77 |
-| + Optuna + Stacking | 10K | 62% | 21.6% | 0.93 |
-| + Targeted scrape | 11K | 55% | 19.9% | 0.93 |
-| **+ General scrape** | **14K** | **59%** | **18.6%** | **0.93** |
+| + Optuna + Stacking | 10K | 62% | 21.6% | 0.92 |
+| + Targeted scrape | 11K | 55% | 19.9% | 0.92 |
+| **+ General scrape** | **14K** | **59%** | **18.6%** | **0.92** |
 
 ---
 
