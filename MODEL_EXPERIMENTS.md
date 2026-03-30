@@ -134,6 +134,20 @@ Median error improved. The slight drop in "good" percentage is because the extra
 
 ---
 
+## Holdout Validation
+
+We scraped 2,093 completely unseen listings from Zameen pages 500+ (pages never used for training). Verified zero URL overlap with training data.
+
+| Metric | Train/Test Split | Holdout (2,093 unseen) |
+|--------|-----------------|----------------------|
+| R² | 0.92 | 0.88 |
+| Good (±25%) | — | 71% |
+| Median Error | — | 14.7% |
+
+The 0.04 R² drop from train/test to holdout is healthy — confirms generalization without overfitting.
+
+---
+
 ## What Would Fix the Remaining Errors
 
 The 3 remaining bad cases (DHA Phase 2 Islamabad, G-13, Federal B Area) share traits:
