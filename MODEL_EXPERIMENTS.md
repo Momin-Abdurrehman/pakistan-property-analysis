@@ -70,16 +70,16 @@ All approaches struggle with Karachi's extreme within-city price variance (Bahri
 
 ---
 
-## Why We Kept Main for Submission
+## Why We Kept the Shared One-Hot Approach
 
 | Factor | Main | City-Prefix | Target Encoding |
 |--------|------|-------------|-----------------|
 | Accuracy | Best overall | Slightly worse | Best per-case but worst overall |
 | Simplicity | Simple | Simple | Requires custom encoder class |
-| Demo-friendly | Easy to explain | Easy to explain | Harder (leakage, smoothing, Bayesian prior) |
-| Risk of grading issues | Low | Low | Medium (leakage if done wrong) |
+| Explainability | Easy to understand | Easy to understand | Harder (leakage prevention, smoothing, Bayesian prior) |
+| Robustness | High | High | Medium (sensitive to implementation details) |
 
-Main is the safest choice: best accuracy, simplest to explain, lowest risk of a grader questioning the implementation.
+The shared one-hot approach gave the best overall accuracy while being the simplest to implement and reason about.
 
 ---
 
