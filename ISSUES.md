@@ -21,21 +21,14 @@ A detailed record of every significant issue we encountered during the developme
 
 ---
 
-### 1.3 Abbottabad Not Available
-**Issue:** We wanted to include Abbottabad as a 7th city. Every URL pattern attempted returned HTTP 503 errors — the city simply doesn't have a dedicated listing page on Zameen.com.
-
-**Resolution:** Dropped Abbottabad from scope. Documented in CLAUDE.md and proceeded with the 6 available cities.
-
----
-
-### 1.4 Single Property Type Was Insufficient
+### 1.3 Single Property Type Was Insufficient
 **Issue:** Initially we only scraped "Homes" (Houses), resulting in 9,250 listings. The `property_type` column had zero variation — all entries were "House". This meant property type couldn't be used as a feature, and the analysis lacked depth.
 
 **Resolution:** Expanded scraping to include **Flats/Apartments** and **Plots**. This tripled the dataset to 24,373 listings and added meaningful property type variation for both EDA and modeling.
 
 ---
 
-### 1.5 Duplicate Listings Across Scraper Runs
+### 1.4 Duplicate Listings Across Scraper Runs
 **Issue:** Multiple scraper processes ran concurrently (background tasks), and Zameen.com re-shows popular listings across pagination pages. This resulted in ~1,161 duplicate rows in the merged CSV.
 
 **Resolution:** Two-stage deduplication:
@@ -44,7 +37,7 @@ A detailed record of every significant issue we encountered during the developme
 
 ---
 
-### 1.6 Background Scraper Working Directory Issue
+### 1.5 Background Scraper Working Directory Issue
 **Issue:** The first background scraper process produced no output — the CSV file was never created. The background process used a relative path (`data/raw/zameen_raw.csv`) but ran from a different working directory.
 
 **Resolution:** Switched to absolute paths (`/Users/.../data/raw/zameen_raw.csv`) for all file operations in the scraper. Ran the main scrape in foreground to ensure reliability.
