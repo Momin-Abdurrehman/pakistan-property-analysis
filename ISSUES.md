@@ -19,7 +19,7 @@ A detailed record of every significant issue we encountered during development, 
 ### 1.3 Insufficient Data in Premium Areas
 **Issue:** Initial scraping (pages 1-80 per city) yielded only 1-6 listings for premium Islamabad sectors (F-6, F-7, F-8). These were our worst prediction errors.
 
-**Resolution:** Scraped area-specific Zameen URLs targeting 17 underrepresented areas, then scraped pages 81-400 across all cities. Total dataset grew from 10K to 14K+ houses.
+**Resolution:** Scraped area-specific Zameen URLs targeting 17 underrepresented areas, then scraped pages 81-400 across all cities. Total dataset grew from 10K to 16K+ houses.
 
 ### 1.4 Duplicate Listings Across Scraper Runs
 **Issue:** Multiple scraping sessions and Zameen re-showing popular listings created ~5,000+ duplicate rows.
@@ -93,7 +93,7 @@ A detailed record of every significant issue we encountered during development, 
 ### 4.5 Model Tuning with Optuna + Stacking
 **Issue:** Default hyperparameters left performance on the table.
 
-**Resolution:** Used Optuna Bayesian optimization (200 trials) to tune XGBoost. Built a stacked ensemble (RF + GB + XGBoost → Ridge meta-learner) combining three complementary models. R² improved from 0.77 to 0.92 on the train/test split. Final dataset: 14,255 houses with 22 features including 5 derived geographic features.
+**Resolution:** Used Optuna Bayesian optimization (200 trials) to tune XGBoost. Built a stacked ensemble (RF + GB + XGBoost → Ridge meta-learner) combining three complementary models. R² improved from 0.77 to 0.92 on the train/test split. Final dataset: 16,136 houses with 22 features including 5 derived geographic features.
 
 ### 4.6 Holdout Validation on Unseen Data
 **Issue:** Testing on the same 29 hand-picked properties every iteration was not statistically robust.

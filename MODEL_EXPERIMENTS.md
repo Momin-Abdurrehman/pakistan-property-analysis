@@ -95,7 +95,7 @@ Premium areas (F-6, F-7, F-8, Clifton, DHA Phase 5) had 0-6 listings. Model coul
 ### Solution
 1. **Targeted scraping:** Area-specific Zameen URLs for 17 underrepresented areas → 4,157 new listings
 2. **General scraping:** Pages 81-400 across all 6 cities → 10,081 new listings
-3. Cleaned, merged, deduplicated → 14,255 total houses (up from 10,473)
+3. Cleaned, merged, deduplicated → 16,136 total houses (up from 10,473)
 
 ### Impact on specific areas
 
@@ -107,9 +107,9 @@ Premium areas (F-6, F-7, F-8, Clifton, DHA Phase 5) had 0-6 listings. Model coul
 | Clifton Karachi | 83 | 301 | 42% error → improved |
 | PECHS Karachi | 59 | 296 | 29% error → improved |
 
-### Final Results (14K houses)
+### Final Results (16K houses)
 
-| Metric | 10K Houses | 14K Houses |
+| Metric | 10K Houses | 16K Houses |
 |--------|-----------|-----------|
 | Good (±25%) | 62% | **59%** |
 | Within ±50% | 93% | **90%** |
@@ -130,7 +130,7 @@ Median error improved. The slight drop in "good" percentage is because the extra
 | + Geographic features | 10K | 52% | 23.6% | 0.77 |
 | + Optuna + Stacking | 10K | 62% | 21.6% | 0.92 |
 | + Targeted scrape | 11K | 55% | 19.9% | 0.92 |
-| **+ General scrape** | **14K** | **59%** | **18.6%** | **0.92** |
+| **+ General scrape** | **16K** | **59%** | **18.6%** | **0.92** |
 
 ---
 

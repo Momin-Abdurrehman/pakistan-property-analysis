@@ -6,7 +6,7 @@
   <p align="center">
     <img src="https://img.shields.io/badge/R²-0.92-brightgreen" alt="R²">
     <img src="https://img.shields.io/badge/Holdout_Accuracy-71%25-blue" alt="Holdout">
-    <img src="https://img.shields.io/badge/Houses-14,255-orange" alt="Houses">
+    <img src="https://img.shields.io/badge/Houses-16,136-orange" alt="Houses">
     <img src="https://img.shields.io/badge/Streamlit-Dashboard-red?logo=streamlit&logoColor=white" alt="Dashboard">
   </p>
 </p>
@@ -15,7 +15,7 @@
 
 ## What This Project Does
 
-We scraped **29,220 property listings** from Zameen.com, cleaned and filtered them to **14,255 houses**, engineered features using Pakistan real estate domain knowledge, and built a **stacked ensemble model** that predicts house prices with **R² = 0.92**.
+We scraped **29,220 property listings** from Zameen.com, cleaned and filtered them to **16,136 houses**, engineered features using Pakistan real estate domain knowledge, and built a **stacked ensemble model** that predicts house prices with **R² = 0.92**.
 
 Tested on **2,093 completely unseen listings** — the model gets **71% of predictions within ±25%** of the actual price.
 
@@ -37,7 +37,7 @@ Tested on **2,093 completely unseen listings** — the model gets **71% of predi
 ## How It Works
 
 ```
-Zameen.com  →  29,220 raw listings  →  14,255 clean houses  →  22 features  →  Stacked Ensemble  →  Price prediction
+Zameen.com  →  29,220 raw listings  →  16,136 clean houses  →  22 features  →  Stacked Ensemble  →  Price prediction
                   (scraping)              (cleaning)            (engineering)      (modeling)
 ```
 
@@ -65,7 +65,7 @@ Zameen.com  →  29,220 raw listings  →  14,255 clean houses  →  22 features
 ├── app.py                         # Streamlit dashboard
 ├── data/
 │   ├── raw/zameen_raw_complete.csv      # 29,220 raw listings
-│   ├── processed/houses_cleaned.csv     # 14,255 clean houses
+│   ├── processed/houses_cleaned.csv     # 16,136 clean houses
 │   └── test/zameen_holdout_test.csv     # 2,093 unseen test data
 ├── ISSUES.md                      # Problems we hit & how we solved them
 └── MODEL_EXPERIMENTS.md           # All modeling experiments compared
@@ -113,7 +113,7 @@ We iterated through multiple approaches. Each change was validated on real-world
 | Houses only + one-hot locations | 59% | 19.9% | Premium areas had 0-6 listings, model couldn't learn them |
 | + Geographic features | 52% | 23.6% | Features helped premium areas but added noise elsewhere |
 | + Optuna XGBoost + Stacking | 62% | 21.6% | R² jumped to 0.92 but still limited by data gaps |
-| + Targeted scraping (14K) | 59% | 18.6% | F-8 error: 64% → 9.4%. Karachi still weakest |
+| + Targeted scraping (16K) | 59% | 18.6% | F-8 error: 64% → 9.4%. Karachi still weakest |
 | **+ Target encoding + holdout test** | **71%** | **14.7%** | **Final model — validated on 2,093 unseen listings** |
 
 Full experiment details: **[MODEL_EXPERIMENTS.md](MODEL_EXPERIMENTS.md)**

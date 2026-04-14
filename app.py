@@ -14,6 +14,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pickle
 import os
+import re
 
 # ── Page Config ────────────────────────────────────────────────────────────────
 
@@ -73,14 +74,40 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# ── SmoothedTargetEncoder (must be defined here so pickle can deserialize) ─────
+
+class SmoothedTargetEncoder:
+    def __init__(self, m=50):
+        self.m = m; self.city_means = {}; self.loc_stats = {}; self.global_mean = None
+
+    def fit(self, df, target_col='log_price'):
+        self.global_mean = df[target_col].mean()
+        self.city_means = df.groupby('city')[target_col].mean().to_dict()
+        for (c, l), g in df.groupby(['city', 'location']):
+            self.loc_stats[(c, l)] = (g[target_col].mean(), len(g))
+        return self
+
+    def transform(self, df):
+        return np.array([self.encode_single(r['city'], r['location']) for _, r in df.iterrows()])
+
+    def encode_single(self, city, loc):
+        cm = self.city_means.get(city, self.global_mean)
+        if (city, loc) in self.loc_stats:
+            lm, n = self.loc_stats[(city, loc)]
+            return (n * lm + self.m * cm) / (n + self.m)
+        return cm
+
+
 # ── Load Data & Model ──────────────────────────────────────────────────────────
 
 @st.cache_data
 def load_data():
     base = os.path.dirname(__file__)
-    df = pd.read_csv(os.path.join(base, 'data', 'processed', 'zameen_cleaned.csv'))
+    df = pd.read_csv(os.path.join(base, 'data', 'processed', 'houses_cleaned.csv'))
     df['bedrooms'] = df['bedrooms'].fillna(0).astype(int)
     df['bathrooms'] = df['bathrooms'].fillna(0).astype(int)
+    df['property_type'] = 'House'
+    df['log_size'] = np.log1p(df['size_sqft'])
     return df
 
 @st.cache_resource
@@ -93,24 +120,66 @@ df = load_data()
 artifacts = load_model()
 model = artifacts['model']
 feature_cols = artifacts['feature_cols']
-top_locations = artifacts.get('top_locations', [])
+loc_encoder = artifacts.get('loc_encoder')
 
-def make_feature_row(size, beds, baths, city, ptype, location=None):
-    """Build a single-row DataFrame with all model features."""
+def _soc_type(loc):
+    """Infer society_type from location string — mirrors notebook feature engineering."""
+    ll = loc.lower()
+    if 'dha' in ll or 'defence' in ll: return 'DHA'
+    if 'bahria' in ll: return 'Bahria'
+    if 'askari' in ll: return 'Askari'
+    if re.search(r'\b[fgiedb]-\d', ll): return 'CDA_Sector'
+    for k in ['park view','lake city','citi housing','eden','wapda','top city','capital smart',
+              'naval anchorage','faisal town','paragon','izmir','valencia','central park','hayatabad']:
+        if k in ll: return 'Private'
+    for k in ['clifton','pechs','gulshan','nazimabad','model town','gulberg','cavalry','cantt',
+              'saddar','johar town','garden town','sabzazar','scheme 33','malir','federal b']:
+        if k in ll: return 'Established'
+    return 'Other'
+
+def _geo_features(city, loc):
+    """Derive the 5 geographic features from city + location string."""
+    ll = loc.lower() if loc else ''
+    society = _soc_type(loc) if loc else 'Other'
+    m = re.search(r'(?:phase|dha)\s*(\d+)', ll)
+    dha_phase = int(m.group(1)) if m and ('dha' in ll or 'defence' in ll) else 0
+    m2 = re.search(r'\b([fgiedb])-\d', ll)
+    isb_tier = {'f':5,'e':4,'g':3,'h':3,'i':2,'d':1,'b':1}.get(m2.group(1), 0) if city == 'Islamabad' and m2 else 0
+    is_premium = int(any([
+        city in ['Lahore','Karachi'] and 'dha' in ll and bool(re.search(r'phase\s*[56]\b', ll)),
+        city == 'Karachi' and 'dha' in ll and 'phase 8' in ll,
+        city == 'Islamabad' and bool(re.search(r'\bf-[678]\b', ll)),
+        city == 'Islamabad' and 'e-11' in ll,
+        city == 'Karachi' and 'clifton' in ll,
+        city == 'Lahore' and any(k in ll for k in ['gulberg iii', 'model town', 'cavalry']),
+    ]))
+    m3 = re.search(r'(?:phase|askari)\s*(\d+)', ll)
+    phase_num = int(m3.group(1)) if m3 else 0
+    return society, dha_phase, isb_tier, is_premium, phase_num
+
+def make_feature_row(size, beds, baths, city, location=None):
+    """Build a single-row DataFrame matching the model's feature_cols."""
     row = {c: 0 for c in feature_cols}
     row['size_sqft'] = size
+    row['log_size'] = np.log1p(size)
     row['bedrooms'] = beds
     row['bathrooms'] = baths
-    type_col = f'type_{ptype}'
-    if type_col in feature_cols:
-        row[type_col] = 1
     city_col = f'city_oh_{city}'
     if city_col in feature_cols:
         row[city_col] = 1
-    if location:
-        loc_col = f'loc_{location}'
-        if loc_col in feature_cols:
-            row[loc_col] = 1
+    society, dha_phase, isb_tier, is_premium, phase_num = _geo_features(city, location or '')
+    soc_col = f'soc_{society}'
+    if soc_col in feature_cols:
+        row[soc_col] = 1
+    row['dha_phase'] = dha_phase
+    row['isb_sector_tier'] = isb_tier
+    row['is_premium_area'] = is_premium
+    row['phase_number'] = phase_num
+    if 'location_encoded' in feature_cols and loc_encoder:
+        if location:
+            row['location_encoded'] = loc_encoder.encode_single(city, location)
+        else:
+            row['location_encoded'] = loc_encoder.city_means.get(city, loc_encoder.global_mean)
     return pd.DataFrame([row])[feature_cols]
 
 def make_feature_df(dataframe):
@@ -119,19 +188,21 @@ def make_feature_df(dataframe):
     for _, r in dataframe.iterrows():
         row = {c: 0 for c in feature_cols}
         row['size_sqft'] = r['size_sqft']
+        row['log_size'] = np.log1p(r['size_sqft'])
         row['bedrooms'] = r['bedrooms']
         row['bathrooms'] = r['bathrooms']
-        type_col = f"type_{r['property_type']}"
-        if type_col in feature_cols:
-            row[type_col] = 1
+        row['dha_phase'] = r.get('dha_phase', 0)
+        row['isb_sector_tier'] = r.get('isb_sector_tier', 0)
+        row['is_premium_area'] = r.get('is_premium_area', 0)
+        row['phase_number'] = r.get('phase_number', 0)
         city_col = f"city_oh_{r['city']}"
         if city_col in feature_cols:
             row[city_col] = 1
-        loc = r.get('location', '')
-        if loc:
-            loc_col = f"loc_{loc}"
-            if loc_col in feature_cols:
-                row[loc_col] = 1
+        soc_col = f"soc_{r.get('society_type', 'Other')}"
+        if soc_col in feature_cols:
+            row[soc_col] = 1
+        if 'location_encoded' in feature_cols and loc_encoder:
+            row['location_encoded'] = loc_encoder.encode_single(r['city'], r['location'])
         rows.append(row)
     return pd.DataFrame(rows)[feature_cols]
 
@@ -147,7 +218,7 @@ with st.sidebar:
     price_range = st.slider("Price Range (Crore PKR)", 0.0, float(df['price_pkr'].max() / 1e7), (0.0, float(df['price_pkr'].max() / 1e7)), step=0.5)
     size_range = st.slider("Size Range (sqft)", 0, int(df['size_sqft'].max()), (0, int(df['size_sqft'].max())), step=100)
     st.markdown("---")
-    st.markdown("<p style='color: #64748b; font-size: 0.75rem;'>Data: Zameen.com | 18,443 listings<br>DS 401 — NUST SEECS, Spring 2026</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: #64748b; font-size: 0.75rem;'>Data: Zameen.com | {len(df):,} listings<br>DS 401 — NUST SEECS, Spring 2026</p>", unsafe_allow_html=True)
 
 mask = (
     df['city'].isin(selected_cities) & df['property_type'].isin(selected_types)
@@ -244,7 +315,7 @@ with tab5:
     st.markdown("Explore how property prices vary across different areas within each city. Areas with fewer than 20 listings are grouped as 'Other'.")
 
     area_city = st.selectbox("Select City for Area Analysis", sorted(df['city'].unique()), key='area_city')
-    area_type = st.selectbox("Property Type", sorted(df['property_type'].unique()), index=1, key='area_type')
+    area_type = st.selectbox("Property Type", sorted(df['property_type'].unique()), index=0, key='area_type')
 
     city_data = filtered[(filtered['city'] == area_city) & (filtered['property_type'] == area_type)]
 
@@ -389,7 +460,7 @@ with tab4:
 
     with col1:
         pred_city = st.selectbox("City", sorted(df['city'].unique()), index=1)
-        pred_type = st.selectbox("Property Type", sorted(df['property_type'].unique()), index=1)
+        pred_type = st.selectbox("Property Type", sorted(df['property_type'].unique()), index=0)
 
     is_plot = (pred_type == 'Plot')
 
@@ -402,8 +473,8 @@ with tab4:
             pred_beds = st.number_input("Bedrooms", min_value=0, max_value=15, value=3, step=1)
 
     with col3:
-        # Location selector (optional — only top locations)
-        city_locs = [loc for loc in top_locations if df[(df['location'] == loc) & (df['city'] == pred_city)].shape[0] > 0]
+        loc_counts = df[df['city'] == pred_city]['location'].value_counts()
+        city_locs = loc_counts[loc_counts >= 10].index.tolist()
         loc_options = ['(General / Other)'] + sorted(city_locs)
         pred_loc = st.selectbox("Area (optional)", loc_options)
         if pred_loc == '(General / Other)':
@@ -416,7 +487,7 @@ with tab4:
             pred_baths = st.number_input("Bathrooms", min_value=0, max_value=10, value=3, step=1)
 
     if st.button("🔮 Predict Price", use_container_width=True, type="primary"):
-        features = make_feature_row(pred_size, pred_beds, pred_baths, pred_city, pred_type, pred_loc)
+        features = make_feature_row(pred_size, pred_beds, pred_baths, pred_city, pred_loc)
         pred_log = model.predict(features)[0]
         pred_pkr = np.expm1(pred_log)
 
