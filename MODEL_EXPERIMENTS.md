@@ -95,7 +95,7 @@ Premium areas (F-6, F-7, F-8, Clifton, DHA Phase 5) had 0-6 listings. Model coul
 ### Solution
 1. **Targeted scraping:** Area-specific Zameen URLs for 17 underrepresented areas → 4,157 new listings
 2. **General scraping:** Pages 81-400 across all 6 cities → 10,081 new listings
-3. Cleaned, merged, deduplicated → 16,136 total houses (up from 10,473)
+3. Cleaned, merged, deduplicated → 15,515 total houses (up from 10,473)
 
 ### Impact on specific areas
 
@@ -107,9 +107,9 @@ Premium areas (F-6, F-7, F-8, Clifton, DHA Phase 5) had 0-6 listings. Model coul
 | Clifton Karachi | 83 | 301 | 42% error → improved |
 | PECHS Karachi | 59 | 296 | 29% error → improved |
 
-### Final Results (16K houses)
+### Final Results (15.5K houses)
 
-| Metric | 10K Houses | 16K Houses |
+| Metric | 10K Houses | 15.5K Houses |
 |--------|-----------|-----------|
 | Good (±25%) | 62% | **59%** |
 | Within ±50% | 93% | **90%** |
@@ -130,21 +130,25 @@ Median error improved. The slight drop in "good" percentage is because the extra
 | + Geographic features | 10K | 52% | 23.6% | 0.77 |
 | + Optuna + Stacking | 10K | 62% | 21.6% | 0.92 |
 | + Targeted scrape | 11K | 55% | 19.9% | 0.92 |
-| **+ General scrape** | **16K** | **59%** | **18.6%** | **0.92** |
+| **+ General scrape + dedup** | **15.5K** | **59%** | **18.6%** | **0.92** |
 
 ---
 
 ## Holdout Validation
 
-We scraped 2,093 completely unseen listings from Zameen pages 500+ (pages never used for training). Verified zero URL overlap with training data.
+We scraped 2,385 houses from Zameen.com in a separate scraping session, stored in `data/test/zameen_holdout_test.csv`. After cleaning (outlier removal, null drops, URL dedup, content dedup), 1,949 listings remained. Zero URL overlap with the 29,220-listing training set was verified programmatically (see Section 6 of `notebooks/main.ipynb`).
 
-| Metric | Train/Test Split | Holdout (2,093 unseen) |
-|--------|-----------------|----------------------|
-| R² | 0.92 | 0.88 |
-| Good (±25%) | — | 71% |
-| Median Error | — | 14.7% |
+The scraper (`scripts/scraper.py`) uses a maximum of 120 pages per city. The holdout comes from a separate scrape run, not a higher page range.
 
-The 0.04 R² drop from train/test to holdout is healthy — confirms generalization without overfitting.
+| Metric | Train/Test Split | Holdout (1,949 unseen) |
+|--------|-----------------|------------------------|
+| R² (log-price, primary) | 0.92 | **0.87** |
+| R² (PKR-space) | — | 0.86 |
+| Good (≤25%) | — | **70.4%** |
+| Median Error | — | **15.2%** |
+| MAE | — | 0.78 Crore PKR |
+
+The ~0.05 R² drop from train/test to holdout is healthy — confirms generalization without overfitting.
 
 ---
 

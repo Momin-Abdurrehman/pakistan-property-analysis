@@ -93,21 +93,21 @@ A detailed record of every significant issue we encountered during development, 
 ### 4.5 Model Tuning with Optuna + Stacking
 **Issue:** Default hyperparameters left performance on the table.
 
-**Resolution:** Used Optuna Bayesian optimization (200 trials) to tune XGBoost. Built a stacked ensemble (RF + GB + XGBoost → Ridge meta-learner) combining three complementary models. R² improved from 0.77 to 0.92 on the train/test split. Final dataset: 16,136 houses with 22 features including 5 derived geographic features.
+**Resolution:** Used Optuna Bayesian optimization (200 trials) to tune XGBoost. Built a stacked ensemble (RF + GB + XGBoost → Ridge meta-learner) combining three complementary models. R² improved from 0.77 to 0.92 on the train/test split. Final dataset: 15,515 houses with 22 features including 5 derived geographic features.
 
 ### 4.6 Holdout Validation on Unseen Data
 **Issue:** Testing on the same 29 hand-picked properties every iteration was not statistically robust.
 
-**Resolution:** Scraped 2,093 completely unseen listings from Zameen pages 500+ (pages the model was never trained on). Verified zero URL overlap with training data. Results: 71% within ±25%, median error 14.7%, R² = 0.88 on holdout — confirming the model generalizes well.
+**Resolution:** Scraped 1,949 completely unseen listings in a separate scraping session (`data/test/zameen_holdout_test.csv`). Verified zero URL overlap with the 29,220-listing training set programmatically (Section 6 of `notebooks/main.ipynb`). Results: 70.4% within ±25%, median error 15.2%, R² = 0.87 on holdout — confirming the model generalizes well.
 
 ---
 
 ## 5. Dashboard
 
-### 5.1 Plot Type Didn't Disable Bedrooms/Bathrooms
-**Issue:** Selecting "Plot" in Price Predictor kept beds/baths inputs active, causing house-like price predictions for empty land.
+### 5.1 Property Type Filter Was Redundant (Houses-Only Dataset)
+**Issue:** The dashboard originally included a Property Type multiselect (Houses / Flats / Plots) and conditional beds/baths logic for the Plot type. The cleaned dataset is Houses-only, making these controls permanently unreachable dead code.
 
-**Resolution:** Conditional logic: when Plot is selected, inputs replaced with info messages and values forced to 0.
+**Resolution:** Removed the property type selector from the sidebar and predictor tab entirely. Charts that previously grouped by property type were updated to group by city or bedroom count instead, providing more useful segmentation.
 
 ### 5.2 No Area-Wise Analysis
 **Issue:** Dashboard showed only city-level comparisons. DHA Phase 2 costs 4x more than B-17 within the same city.

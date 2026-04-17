@@ -214,14 +214,13 @@ with st.sidebar:
     st.markdown("# 🏠 Filters")
     st.markdown("---")
     selected_cities = st.multiselect("Cities", sorted(df['city'].unique()), default=sorted(df['city'].unique()))
-    selected_types = st.multiselect("Property Type", sorted(df['property_type'].unique()), default=sorted(df['property_type'].unique()))
     price_range = st.slider("Price Range (Crore PKR)", 0.0, float(df['price_pkr'].max() / 1e7), (0.0, float(df['price_pkr'].max() / 1e7)), step=0.5)
     size_range = st.slider("Size Range (sqft)", 0, int(df['size_sqft'].max()), (0, int(df['size_sqft'].max())), step=100)
     st.markdown("---")
     st.markdown(f"<p style='color: #64748b; font-size: 0.75rem;'>Data: Zameen.com | {len(df):,} listings<br>DS 401 — NUST SEECS, Spring 2026</p>", unsafe_allow_html=True)
 
 mask = (
-    df['city'].isin(selected_cities) & df['property_type'].isin(selected_types)
+    df['city'].isin(selected_cities)
     & (df['price_pkr'] >= price_range[0] * 1e7) & (df['price_pkr'] <= price_range[1] * 1e7)
     & (df['size_sqft'] >= size_range[0]) & (df['size_sqft'] <= size_range[1])
 )
@@ -251,28 +250,29 @@ tab1, tab2, tab5, tab3, tab4 = st.tabs(["📊 Market Overview", "🗺️ City Co
 with tab1:
     col1, col2 = st.columns(2)
     with col1:
-        fig = px.histogram(filtered, x='price_pkr', nbins=50, color='property_type', barmode='overlay',
-                           color_discrete_sequence=['#6366f1', '#10b981', '#f43f5e'], template=PLOTLY_TEMPLATE,
-                           labels={'price_pkr': 'Price (PKR)', 'property_type': 'Type'})
-        fig.update_layout(title='Price Distribution by Property Type', plot_bgcolor='rgba(0,0,0,0)',
+        fig = px.histogram(filtered, x='price_pkr', nbins=50, color='city',
+                           color_discrete_sequence=px.colors.qualitative.Set2, template=PLOTLY_TEMPLATE,
+                           barmode='overlay', opacity=0.75,
+                           labels={'price_pkr': 'Price (PKR)', 'city': 'City'})
+        fig.update_layout(title='House Price Distribution by City', plot_bgcolor='rgba(0,0,0,0)',
                           paper_bgcolor='rgba(0,0,0,0)', font_color='#e2e8f0', height=400)
         st.plotly_chart(fig, use_container_width=True)
 
     with col2:
-        type_counts = filtered['property_type'].value_counts()
-        fig = go.Figure(data=[go.Pie(labels=type_counts.index, values=type_counts.values, hole=0.55,
-                                      marker=dict(colors=['#6366f1', '#10b981', '#f43f5e']),
+        city_counts = filtered['city'].value_counts()
+        fig = go.Figure(data=[go.Pie(labels=city_counts.index, values=city_counts.values, hole=0.55,
+                                      marker=dict(colors=px.colors.qualitative.Set2),
                                       textfont=dict(color='white', size=14))])
-        fig.update_layout(title='Property Type Distribution', template=PLOTLY_TEMPLATE,
+        fig.update_layout(title='Listings by City', template=PLOTLY_TEMPLATE,
                           plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#e2e8f0', height=400)
         st.plotly_chart(fig, use_container_width=True)
 
     sample = filtered.sample(n=min(5000, len(filtered)), random_state=42)
-    fig = px.scatter(sample, x='size_sqft', y='price_pkr', color='property_type',
-                     color_discrete_sequence=['#6366f1', '#10b981', '#f43f5e'], opacity=0.5, template=PLOTLY_TEMPLATE,
-                     labels={'size_sqft': 'Size (sqft)', 'price_pkr': 'Price (PKR)', 'property_type': 'Type'},
-                     hover_data=['city', 'bedrooms', 'price_per_sqft'])
-    fig.update_layout(title='Property Size vs Price', plot_bgcolor='rgba(0,0,0,0)',
+    fig = px.scatter(sample, x='size_sqft', y='price_pkr', color='city',
+                     color_discrete_sequence=px.colors.qualitative.Set2, opacity=0.5, template=PLOTLY_TEMPLATE,
+                     labels={'size_sqft': 'Size (sqft)', 'price_pkr': 'Price (PKR)', 'city': 'City'},
+                     hover_data=['bedrooms', 'price_per_sqft', 'location'])
+    fig.update_layout(title='House Size vs Price by City', plot_bgcolor='rgba(0,0,0,0)',
                       paper_bgcolor='rgba(0,0,0,0)', font_color='#e2e8f0', height=500)
     st.plotly_chart(fig, use_container_width=True)
 
@@ -300,11 +300,14 @@ with tab2:
                           plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color='#e2e8f0', height=400)
         st.plotly_chart(fig, use_container_width=True)
 
-    pivot = filtered.groupby(['city', 'property_type'])['price_per_sqft'].median().reset_index()
-    fig = px.bar(pivot, x='city', y='price_per_sqft', color='property_type', barmode='group',
+    bed_df = filtered.copy()
+    bed_df['bedroom_group'] = pd.cut(bed_df['bedrooms'], bins=[0, 3, 5, 100],
+                                      labels=['1–3 Bed', '4–5 Bed', '6+ Bed'])
+    pivot = bed_df.groupby(['city', 'bedroom_group'], observed=True)['price_per_sqft'].median().reset_index()
+    fig = px.bar(pivot, x='city', y='price_per_sqft', color='bedroom_group', barmode='group',
                  color_discrete_sequence=['#6366f1', '#10b981', '#f43f5e'], template=PLOTLY_TEMPLATE,
-                 labels={'price_per_sqft': 'Median PKR/sqft', 'city': 'City', 'property_type': 'Type'})
-    fig.update_layout(title='Median Price per Sqft: City × Property Type', plot_bgcolor='rgba(0,0,0,0)',
+                 labels={'price_per_sqft': 'Median PKR/sqft', 'city': 'City', 'bedroom_group': 'Bedrooms'})
+    fig.update_layout(title='Median Price per Sqft: City × Bedroom Group', plot_bgcolor='rgba(0,0,0,0)',
                       paper_bgcolor='rgba(0,0,0,0)', font_color='#e2e8f0', height=450)
     st.plotly_chart(fig, use_container_width=True)
 
@@ -315,9 +318,8 @@ with tab5:
     st.markdown("Explore how property prices vary across different areas within each city. Areas with fewer than 20 listings are grouped as 'Other'.")
 
     area_city = st.selectbox("Select City for Area Analysis", sorted(df['city'].unique()), key='area_city')
-    area_type = st.selectbox("Property Type", sorted(df['property_type'].unique()), index=0, key='area_type')
 
-    city_data = filtered[(filtered['city'] == area_city) & (filtered['property_type'] == area_type)]
+    city_data = filtered[filtered['city'] == area_city]
 
     # Group areas: 20+ listings get their own name, rest → "Other"
     loc_counts_city = city_data['location'].value_counts()
@@ -349,7 +351,7 @@ with tab5:
             textfont=dict(color='#e2e8f0', size=11),
         ))
         fig.update_layout(
-            title=f'Median Price/Sqft by Area — {area_type}s in {area_city}',
+            title=f'Median Price/Sqft by Area — Houses in {area_city}',
             xaxis_title='PKR / sqft', template=PLOTLY_TEMPLATE,
             plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
             font_color='#e2e8f0', height=max(400, len(plot_data) * 30 + 100),
@@ -370,7 +372,7 @@ with tab5:
             textfont=dict(color='#e2e8f0', size=11),
         ))
         fig.update_layout(
-            title=f'Median Total Price by Area — {area_type}s in {area_city}',
+            title=f'Median Total Price by Area — Houses in {area_city}',
             xaxis_title='Price (Crore PKR)', template=PLOTLY_TEMPLATE,
             plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
             font_color='#e2e8f0', height=max(400, len(plot_data2) * 30 + 100),
@@ -379,7 +381,7 @@ with tab5:
         st.plotly_chart(fig, use_container_width=True)
 
     # Detailed table
-    st.markdown(f"### Detailed Area Breakdown — {area_type}s in {area_city}")
+    st.markdown(f"### Detailed Area Breakdown — Houses in {area_city}")
     table_data = area_stats.copy()
     table_data['median_price'] = (table_data['median_price'] / 1e7).round(2).astype(str) + ' Cr'
     table_data['median_ppsf'] = table_data['median_ppsf'].round(0).astype(int).apply(lambda x: f'{x:,}')
@@ -422,7 +424,7 @@ with tab3:
                          x='predicted_pkr', y='price_pkr', color='status', color_discrete_map=status_colors_map,
                          opacity=0.5, template=PLOTLY_TEMPLATE,
                          labels={'predicted_pkr': 'Predicted Price (PKR)', 'price_pkr': 'Actual Price (PKR)'},
-                         hover_data=['city', 'property_type', 'size_sqft'])
+                         hover_data=['city', 'size_sqft', 'location'])
         max_val = max(filt_analysis['price_pkr'].max(), filt_analysis['predicted_pkr'].max())
         fig.add_trace(go.Scatter(x=[0, max_val], y=[0, max_val], mode='lines',
                                   line=dict(dash='dash', color='white', width=1), name='Fair Price Line'))
@@ -442,12 +444,12 @@ with tab3:
     undervalued = filt_analysis[filt_analysis['status'] == 'Undervalued'].copy()
     undervalued['savings'] = undervalued['predicted_pkr'] - undervalued['price_pkr']
     top_deals = undervalued.nlargest(10, 'savings')[
-        ['city', 'property_type', 'location', 'size_sqft', 'bedrooms', 'price_pkr', 'predicted_pkr', 'savings']
+        ['city', 'location', 'size_sqft', 'bedrooms', 'price_pkr', 'predicted_pkr', 'savings']
     ].copy()
     top_deals['price_pkr'] = (top_deals['price_pkr'] / 1e7).round(2).astype(str) + ' Cr'
     top_deals['predicted_pkr'] = (top_deals['predicted_pkr'] / 1e7).round(2).astype(str) + ' Cr'
     top_deals['savings'] = (top_deals['savings'] / 1e5).round(0).astype(int).astype(str) + ' Lakh'
-    top_deals.columns = ['City', 'Type', 'Location', 'Size (sqft)', 'Beds', 'Listed Price', 'Fair Value', 'Potential Savings']
+    top_deals.columns = ['City', 'Location', 'Size (sqft)', 'Beds', 'Listed Price', 'Fair Value', 'Potential Savings']
     st.dataframe(top_deals, use_container_width=True, hide_index=True)
 
 # ── Tab 4: Price Predictor ─────────────────────────────────────────────────────
@@ -460,17 +462,10 @@ with tab4:
 
     with col1:
         pred_city = st.selectbox("City", sorted(df['city'].unique()), index=1)
-        pred_type = st.selectbox("Property Type", sorted(df['property_type'].unique()), index=0)
-
-    is_plot = (pred_type == 'Plot')
 
     with col2:
         pred_size = st.number_input("Size (sqft)", min_value=50, max_value=100000, value=2250, step=50)
-        if is_plot:
-            st.info("Plots have no bedrooms (empty land)")
-            pred_beds = 0
-        else:
-            pred_beds = st.number_input("Bedrooms", min_value=0, max_value=15, value=3, step=1)
+        pred_beds = st.number_input("Bedrooms", min_value=0, max_value=15, value=3, step=1)
 
     with col3:
         loc_counts = df[df['city'] == pred_city]['location'].value_counts()
@@ -480,11 +475,7 @@ with tab4:
         if pred_loc == '(General / Other)':
             pred_loc = None
 
-        if is_plot:
-            st.info("Plots have no bathrooms")
-            pred_baths = 0
-        else:
-            pred_baths = st.number_input("Bathrooms", min_value=0, max_value=10, value=3, step=1)
+        pred_baths = st.number_input("Bathrooms", min_value=0, max_value=10, value=3, step=1)
 
     if st.button("🔮 Predict Price", use_container_width=True, type="primary"):
         features = make_feature_row(pred_size, pred_beds, pred_baths, pred_city, pred_loc)
@@ -492,7 +483,7 @@ with tab4:
         pred_pkr = np.expm1(pred_log)
 
         similar = df[
-            (df['city'] == pred_city) & (df['property_type'] == pred_type)
+            (df['city'] == pred_city)
             & (df['size_sqft'].between(pred_size * 0.8, pred_size * 1.2))
         ]
         median_similar = similar['price_pkr'].median() if len(similar) > 5 else None
@@ -503,14 +494,14 @@ with tab4:
         ppsf = pred_pkr / pred_size
 
         loc_display = f" in {pred_loc}" if pred_loc else ""
-        beds_display = f"{pred_beds} bed / {pred_baths} bath" if not is_plot else "Empty Plot"
+        beds_display = f"{pred_beds} bed / {pred_baths} bath"
 
         st.markdown(f"""
         <div class="prediction-box">
             <p style="color: #a0aec0; font-size: 1rem; margin: 0;">Estimated Fair Market Value</p>
             <p class="prediction-price">{price_str}</p>
             <p style="color: #a0aec0; font-size: 0.95rem; margin: 0;">
-                {pred_size:,} sqft {pred_type} in {pred_city}{loc_display} &bull; {beds_display}
+                {pred_size:,} sqft House in {pred_city}{loc_display} &bull; {beds_display}
                 &bull; {ppsf:,.0f} PKR/sqft
             </p>
         </div>
