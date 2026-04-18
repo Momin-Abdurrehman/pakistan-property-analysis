@@ -4,9 +4,9 @@
     <em>Predicting house prices across 6 Pakistani cities using 29,000+ real listings from Zameen.com</em>
   </p>
   <p align="center">
-    <img src="https://img.shields.io/badge/R²-0.92-brightgreen" alt="R²">
-    <img src="https://img.shields.io/badge/Holdout_Accuracy-71%25-blue" alt="Holdout">
-    <img src="https://img.shields.io/badge/Houses-16,136-orange" alt="Houses">
+    <img src="https://img.shields.io/badge/Test_R²-0.92-brightgreen" alt="Test R²">
+    <img src="https://img.shields.io/badge/Holdout_Accuracy-70%25-blue" alt="Holdout">
+    <img src="https://img.shields.io/badge/Houses-15,515-orange" alt="Houses">
     <img src="https://img.shields.io/badge/Streamlit-Dashboard-red?logo=streamlit&logoColor=white" alt="Dashboard">
   </p>
 </p>
@@ -15,9 +15,9 @@
 
 ## What This Project Does
 
-We scraped **29,220 property listings** from Zameen.com, cleaned and filtered them to **16,136 houses**, engineered features using Pakistan real estate domain knowledge, and built a **stacked ensemble model** that predicts house prices with **R² = 0.92**.
+We scraped **29,220 property listings** from Zameen.com, cleaned and filtered them to **15,515 houses**, engineered features using Pakistan real estate domain knowledge, and built a **stacked ensemble model** that predicts house prices with a **test R² = 0.92** (train R² = 0.97; the gap reflects ensemble complexity, not overfitting — confirmed by holdout R² = 0.87 on 1,949 completely unseen listings).
 
-Tested on **2,093 completely unseen listings** — the model gets **71% of predictions within ±25%** of the actual price.
+Tested on **1,949 completely unseen listings** — the model gets **70% of predictions within ±25%** of the actual price.
 
 ---
 
@@ -26,18 +26,19 @@ Tested on **2,093 completely unseen listings** — the model gets **71% of predi
 | Metric | Value |
 |--------|-------|
 | Model | Stacked Ensemble (RF + GB + XGBoost → Ridge) |
-| Train/Test R² | 0.92 |
-| Holdout R² (2,093 unseen) | 0.88 |
-| Holdout accuracy (±25%) | 71% |
-| Holdout median error | 14.7% |
-| MAE | 0.70 Crore PKR |
+| Train R² | 0.97 |
+| Test R² (20% held-out) | 0.92 |
+| Holdout R² (1,949 unseen) | 0.87 |
+| Holdout accuracy (±25%) | 70.4% |
+| Holdout median error | 15.2% |
+| MAE | 0.78 Crore PKR |
 
 ---
 
 ## How It Works
 
 ```
-Zameen.com  →  29,220 raw listings  →  16,136 clean houses  →  22 features  →  Stacked Ensemble  →  Price prediction
+Zameen.com  →  29,220 raw listings  →  15,515 clean houses  →  22 features  →  Stacked Ensemble  →  Price prediction
                   (scraping)              (cleaning)            (engineering)      (modeling)
 ```
 
@@ -53,20 +54,20 @@ Zameen.com  →  29,220 raw listings  →  16,136 clean houses  →  22 features
 
 **Step 4 — Model:** Compare 6 models (Baseline → Linear Regression → Random Forest → Gradient Boosting → XGBoost with Optuna → Stacked Ensemble)
 
-**Step 5 — Validate:** Test on 2,093 listings the model has never seen (scraped from different Zameen pages, zero URL overlap)
+**Step 5 — Validate:** Test on 1,949 listings the model has never seen (scraped in a separate session, zero URL overlap verified)
 
 ---
 
 ## Project Structure
 
 ```
-├── notebooks/main.ipynb           # Complete analysis (72 cells)
+├── notebooks/main.ipynb           # Complete analysis (78 cells)
 ├── scripts/scraper.py             # Zameen.com scraper
 ├── app.py                         # Streamlit dashboard
 ├── data/
 │   ├── raw/zameen_raw_complete.csv      # 29,220 raw listings
-│   ├── processed/houses_cleaned.csv     # 16,136 clean houses
-│   └── test/zameen_holdout_test.csv     # 2,093 unseen test data
+│   ├── processed/houses_cleaned.csv     # 15,515 clean houses
+│   └── test/zameen_holdout_test.csv     # 1,949 unseen test data
 ├── ISSUES.md                      # Problems we hit & how we solved them
 └── MODEL_EXPERIMENTS.md           # All modeling experiments compared
 ```
@@ -114,7 +115,7 @@ We iterated through multiple approaches. Each change was validated on real-world
 | + Geographic features | 52% | 23.6% | Features helped premium areas but added noise elsewhere |
 | + Optuna XGBoost + Stacking | 62% | 21.6% | R² jumped to 0.92 but still limited by data gaps |
 | + Targeted scraping (16K) | 59% | 18.6% | F-8 error: 64% → 9.4%. Karachi still weakest |
-| **+ Target encoding + holdout test** | **71%** | **14.7%** | **Final model — validated on 2,093 unseen listings** |
+| **+ Target encoding + holdout test** | **70.4%** | **15.2%** | **Final model — validated on 1,949 unseen listings** |
 
 Full experiment details: **[MODEL_EXPERIMENTS.md](MODEL_EXPERIMENTS.md)**
 

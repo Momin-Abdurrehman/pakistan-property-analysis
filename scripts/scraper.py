@@ -32,6 +32,14 @@ CITIES = {
     "Rawalpindi": (41, 80),
 }
 
+# ── Holdout dataset note ───────────────────────────────────────────────────────
+# data/test/zameen_holdout_test.csv was collected in a separate scrape session
+# using the same configuration above. Independence from the training set is
+# guaranteed by URL — zero URL overlap with data/raw/zameen_raw_complete.csv
+# (verified programmatically in notebooks/main.ipynb Section 6).
+# The maximum page range is 120 per city; there is no "pages 500+" range.
+# ──────────────────────────────────────────────────────────────────────────────
+
 # Property types to scrape: (URL slug, label for CSV)
 PROPERTY_TYPES = [
     ("Homes", "House"),
