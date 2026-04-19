@@ -61,7 +61,7 @@ Zameen.com  →  29,220 raw listings  →  15,515 clean houses  →  22 features
 ## Project Structure
 
 ```
-├── notebooks/main.ipynb           # Complete analysis (78 cells)
+├── notebooks/main.ipynb           # Complete analysis (80 cells)
 ├── scripts/scraper.py             # Zameen.com scraper
 ├── app.py                         # Streamlit dashboard
 ├── data/
