@@ -26,3 +26,6 @@ venv/
 .vscode/
 .idea/
 .DS_Store
+DS401_Project_Report.docx
+.gitignore
+generate_report.py
